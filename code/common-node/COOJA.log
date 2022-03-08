@@ -1,0 +1,12 @@
+[11:20:36 - main] [Cooja.java:1356] [INFO] - > Starting Cooja
+[11:20:36 - main] [Cooja.java:2880] [INFO] - External tools default settings: /external_tools_linux_64.config
+[11:20:36 - main] [Cooja.java:2910] [INFO] - External tools user settings: /home/paula/.cooja.user.properties
+[11:20:36 - main] [Cooja.java:1362] [INFO] - > Creating simulation
+[11:20:38 - AWT-EventQueue-0] [Simulation.java:422] [INFO] - Simulation random seed: 123456
+[11:20:39 - main] [Visualizer.java:256] [INFO] - Registered external visualizer: org.contikios.cooja.plugins.skins.DGRMVisualizerSkin
+[11:20:39 - main] [Cooja.java:1372] [INFO] - > Creating mote type
+[11:20:39 - main] [Cooja.java:4192] [WARN] - Path is not portable: '/home/paula/Documents/IoTorii-master/Contiki-ng_4_2/iotorii-n-hlmac/code/common-node/iotorii-common-node.c
+[11:21:22 - AWT-EventQueue-0] [CompileContiki.java:140] [INFO] - > make iotorii-common-node.cooja TARGET=cooja 
+[11:22:22 - main] [Cooja.java:1389] [INFO] - > Adding motes
+[11:23:14 - Thread-2] [Simulation.java:253] [INFO] - Simulation main loop started, system time: 1645557794891
+[11:28:03 - Thread-2] [Simulation.java:312] [INFO] - Simulation main loop stopped, system time: 1645558083400	Duration: 288509 ms	Simulated time 2839692632100 ms	Ratio 9842648.347538551

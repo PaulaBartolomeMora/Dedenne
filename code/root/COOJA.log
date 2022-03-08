@@ -1,0 +1,39 @@
+[11:05:22 - main] [Cooja.java:1356] [INFO] - > Starting Cooja
+[11:05:22 - main] [Cooja.java:2880] [INFO] - External tools default settings: /external_tools_linux_64.config
+[11:05:22 - main] [Cooja.java:2910] [INFO] - External tools user settings: /home/paula/.cooja.user.properties
+[11:05:23 - main] [Cooja.java:1362] [INFO] - > Creating simulation
+[11:05:26 - AWT-EventQueue-0] [Simulation.java:422] [INFO] - Simulation random seed: 123456
+[11:05:26 - main] [Visualizer.java:256] [INFO] - Registered external visualizer: org.contikios.cooja.plugins.skins.DGRMVisualizerSkin
+[11:05:27 - main] [Cooja.java:1372] [INFO] - > Creating mote type
+[11:05:27 - main] [Cooja.java:4192] [WARN] - Path is not portable: '/home/paula/Documents/IoTorii-master/Contiki-ng_4_2/iotorii-n-hlmac/code/root/iotorii-root.c
+[11:05:29 - AWT-EventQueue-0] [CompileContiki.java:140] [INFO] - > make iotorii-root.cooja TARGET=cooja 
+[11:05:38 - main] [Cooja.java:1389] [INFO] - > Adding motes
+[11:06:21 - Thread-2] [Simulation.java:253] [INFO] - Simulation main loop started, system time: 1645556781794
+[11:11:10 - Thread-3] [Cooja.java:4192] [WARN] - Path is not portable: '/home/paula/Documents/IoTorii-master/Contiki-ng_4_2/iotorii-n-hlmac/code/root/iotorii-root.c
+[11:11:11 - Thread-2] [Simulation.java:293] [FATAL] - Simulation stopped due to error: No more events
+java.lang.RuntimeException: No more events
+	at org.contikios.cooja.Simulation.run(Simulation.java:274)
+	at java.base/java.lang.Thread.run(Thread.java:829)
+[11:11:11 - Thread-3] [Simulation.java:422] [INFO] - Simulation random seed: 123456
+[11:11:11 - Thread-3] [CompileContiki.java:140] [INFO] - > make iotorii-root.cooja TARGET=cooja 
+[11:11:13 - Thread-2] [Simulation.java:312] [INFO] - Simulation main loop stopped, system time: 1645557073562	Duration: 291768 ms	Simulated time 2701043090300 ms	Ratio 9257502.845754161
+[11:11:14 - Thread-3] [TimeLine.java:567] [INFO] - Zoom level: 500.0 microseconds/pixel 
+[11:11:14 - Thread-7] [Simulation.java:253] [INFO] - Simulation main loop started, system time: 1645557074601
+[11:11:16 - Thread-7] [Simulation.java:312] [INFO] - Simulation main loop stopped, system time: 1645557076611	Duration: 2010 ms	Simulated time 14319981000 ms	Ratio 7124368.6567164175
+[11:11:18 - Thread-8] [Simulation.java:253] [INFO] - Simulation main loop started, system time: 1645557078115
+[11:11:18 - Thread-8] [Simulation.java:312] [INFO] - Simulation main loop stopped, system time: 1645557078121	Duration: 6 ms	Simulated time 14319981001 ms	Ratio 2.3866635001666665E9
+[11:11:19 - Thread-9] [Simulation.java:253] [INFO] - Simulation main loop started, system time: 1645557079131
+[11:11:19 - Thread-9] [Simulation.java:312] [INFO] - Simulation main loop stopped, system time: 1645557079132	Duration: 1 ms	Simulated time 14319981002 ms	Ratio 1.4319981002E10
+[11:11:22 - Thread-10] [Simulation.java:253] [INFO] - Simulation main loop started, system time: 1645557082659
+[11:11:23 - Thread-10] [Simulation.java:312] [INFO] - Simulation main loop stopped, system time: 1645557083948	Duration: 1289 ms	Simulated time 24156238700 ms	Ratio 1.874029379363848E7
+[11:11:24 - Thread-11] [Cooja.java:4192] [WARN] - Path is not portable: '/home/paula/Documents/IoTorii-master/Contiki-ng_4_2/iotorii-n-hlmac/code/root/iotorii-root.c
+[11:11:24 - Thread-11] [Simulation.java:422] [INFO] - Simulation random seed: 123456
+[11:11:24 - Thread-11] [CompileContiki.java:140] [INFO] - > make iotorii-root.cooja TARGET=cooja 
+[11:11:27 - Thread-11] [TimeLine.java:567] [INFO] - Zoom level: 500.0 microseconds/pixel 
+[11:11:30 - Thread-14] [Simulation.java:253] [INFO] - Simulation main loop started, system time: 1645557090219
+[11:11:40 - AWT-EventQueue-0] [TimeLine.java:567] [INFO] - Zoom level: 1000.0 microseconds/pixel 
+[11:11:41 - AWT-EventQueue-0] [TimeLine.java:567] [INFO] - Zoom level: 2000.0 microseconds/pixel 
+[11:11:47 - AWT-EventQueue-0] [TimeLine.java:567] [INFO] - Zoom level: 5000.0 microseconds/pixel 
+[11:11:48 - AWT-EventQueue-0] [TimeLine.java:567] [INFO] - Zoom level: 2000.0 microseconds/pixel 
+[11:11:48 - AWT-EventQueue-0] [TimeLine.java:567] [INFO] - Zoom level: 1000.0 microseconds/pixel 
+[11:17:49 - Thread-14] [Simulation.java:312] [INFO] - Simulation main loop stopped, system time: 1645557469794	Duration: 379575 ms	Simulated time 3484084710800 ms	Ratio 9178909.86181914
