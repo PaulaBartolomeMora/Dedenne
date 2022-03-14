@@ -1,7 +1,7 @@
 CONTIKI_PROJECT = iotorii-root
 all: $(CONTIKI_PROJECT)
 
-CONTIKI = ../../../../../contiki-ng
+CONTIKI = ../../../..
 
 PROJECT_SOURCEFILES += ../iotorii-csma.c
 PROJECT_SOURCEFILES += ../hlmacaddr.c
