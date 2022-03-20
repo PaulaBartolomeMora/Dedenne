@@ -1,14 +1,14 @@
 
 
 #include "contiki.h"
-//EXTRA BEGIN
+
 // #include "net/mac/csma/csma.h"
 // #include "net/mac/csma/anti-replay.h"
 // #include "net/mac/csma/csma-security.h"
 #include "iotorii-csma.h"
 #include "anti-replay.h"
 #include "csma-security.h"
-//EXTRA END
+
 #include "net/mac/framer/frame802154.h"
 #include "net/mac/framer/framer-802154.h"
 #include "net/mac/llsec802154.h"
@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "ccm-star-packetbuf.h"
+
 /* Log configuration */
 #include "sys/log.h"
 

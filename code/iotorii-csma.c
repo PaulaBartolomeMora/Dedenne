@@ -1,6 +1,5 @@
 
 
-//EXTRA BEGIN
 //#include "net/mac/csma/csma.h"
 //#include "net/mac/csma/csma-output.h"
 #include "csma-output.h"
@@ -15,13 +14,13 @@
 #include "sys/node-id.h" //For node_id
 #include "sys/rtimer.h" //For rtimer_clock_t, RTIMER_NOW()
 #endif
-//EXTRA END
+
 #include "net/mac/mac-sequence.h"
 #include "net/packetbuf.h"
 #include "net/netstack.h"
 
 /* Log configuration */
-//EXTRA BEGIN
+
 #include "sys/log.h"
 #if IOTORII_NODE_TYPE == 0 //The traditional MAC operation
 #define LOG_MODULE "CSMA"
@@ -29,52 +28,34 @@
 #define LOG_MODULE "IoTorii-CSMA"
 #endif
 #define LOG_LEVEL LOG_LEVEL_MAC
-//EXTRA END
 
-//EXTRA BEGIN
-/* Time to send Hello messages
- * Unit : second
- * IoTorii starts to randomly send a hello message in range
- * [IOTORII_CONF_HELLO_START_TIME/2 IOTORII_CONF_HELLO_START_TIME]
- * after initializing a node.
- */
+
+
+//DELAY (S) DESDE QUE SE INICIALIZA UN NODO HASTA QUE SE ENVÍAN LOS MENSAJES HELLO A LOS VECINOS
+//RANGO = [IOTORII_CONF_HELLO_START_TIME/2 IOTORII_CONF_HELLO_START_TIME]
 #ifdef IOTORII_CONF_HELLO_START_TIME
 #define IOTORII_HELLO_START_TIME IOTORII_CONF_HELLO_START_TIME
 #else
 #define IOTORII_HELLO_START_TIME 2 //Default Delay is 2 s
 #endif
 
-/* Time to send the first SetHLMAC message by a root node
- * Unit : second
- * IoTorii starts to send a SetHLMAC message
- * at t = IOTORII_CONF_SETHLMAC_START_TIME
- * after initializing the root node.
- */
+//DELAY (S) DESDE QUE SE INICIALIZA EL NODO ROOT HASTA QUE SE ENVÍA EL PRIMER MENSAJE SETHLMAC A LOS VECINOS
+//SE IMPRIMER LOS PRIMEROS LOGS DE ESTADÍSTICAS
 #ifdef IOTORII_CONF_SETHLMAC_START_TIME
 #define IOTORII_SETHLMAC_START_TIME IOTORII_CONF_SETHLMAC_START_TIME
 #else
 #define IOTORII_SETHLMAC_START_TIME 10 //Default Delay is 10 s
 #endif
 
-/* Delay before sending a SetHLMAC message
- * Unit : tick
- * 1 second is 128 ticks
- * IoTorii uniformly waits for random delay in range
- * [IOTORII_CONF_SETHLMAC_DELAY/2 IOTORII_CONF_SETHLMAC_DELAY]
- * before sending a SetHLMAC in a common node.
- */
+//DELAY (tick??) DESDE QUE SE INICIALIZA UN NODO COMÚN HASTA QUE SE ENVÍA MENSAJE SETHLMAC A LOS VECINOS
+//RANGO = [IOTORII_CONF_SETHLMAC_DELAY/2 IOTORII_CONF_SETHLMAC_DELAY]
 #ifdef IOTORII_CONF_SETHLMAC_DELAY
 #define IOTORII_SETHLMAC_DELAY IOTORII_CONF_SETHLMAC_DELAY
 #else
 #define IOTORII_SETHLMAC_DELAY 0 //Default Delay is zero
 #endif
 
-/* Time to print statistics
- * Unit : second
- * IoTorii nodes start to print statistic logs on the output
- * at t = IOTORII_CONF_STATISTICS_TIME
- * after initializing a node.
- */
+//SE IMPRIMEN LOS LOGS DE ESTADÍSTICAS CADA X TIEMPO (S)
 #ifdef IOTORII_CONF_STATISTICS_TIME
 #define IOTORII_STATISTICS_TIME IOTORII_CONF_STATISTICS_TIME
 #else
@@ -89,11 +70,13 @@ static struct ctimer sethlmac_timer;
 #if IOTORII_NODE_TYPE > 0 //ROOT O NODO COMÚN
 static struct ctimer hello_timer;
 static struct ctimer send_sethlmac_timer;
+
 #if LOG_DBG_STATISTIC == 1
 static struct ctimer statistic_timer;
 int number_of_hello_messages = 0;
 int number_of_sethlmac_messages = 0;
 #endif
+
 #endif
 
 #if IOTORII_NODE_TYPE > 0 //ROOT O NODO COMÚN
@@ -156,8 +139,10 @@ static int max_payload (void)
 	return CSMA_MAC_LEN - framer_hdrlen;
 }
 
+/*---------------------------------------------------------------------------*/
 
 #if IOTORII_NODE_TYPE > 0 //ROOT O NODO COMÚN
+
 static void iotorii_handle_hello_timer ()
 {
 	int mac_max_payload = max_payload();
@@ -255,12 +240,11 @@ void iotorii_send_sethlmac (hlmacaddr_t addr, linkaddr_t sender_link_address)
 		#endif
 
 
-		//SE BORRA EL NODO EMISOR DEL MENSAJE SETHLMAC RECIBIDO DEL NUEVO PAYLOAD
 		uint8_t number_of_neighbours_new = number_of_neighbours;
 
 		for (neighbour_entry = list_head(neighbour_table_entry_list); neighbour_entry != NULL; neighbour_entry = list_item_next(neighbour_entry))
 		{
-			if (linkaddr_cmp(&neighbour_entry->addr, &sender_link_address))
+			if (linkaddr_cmp(&neighbour_entry->addr, &sender_link_address)) //SE BORRA EL NODO EMISOR DEL MENSAJE SETHLMAC RECIBIDO DEL NUEVO PAYLOAD
 			{
 				number_of_neighbours_new = number_of_neighbours - 1;
 				
@@ -409,121 +393,8 @@ void iotorii_send_sethlmac (hlmacaddr_t addr, linkaddr_t sender_link_address)
 		} //END if number_of_neighbours_new
 	} // END else
 }
-#endif
 
 
-#if IOTORII_NODE_TYPE == 1 //ROOT
-
-static void iotorii_handle_sethlmac_timer ()
-{
-	//uint8_t id = 1;
-	hlmacaddr_t root_addr; //SE CREA EL ROOT
-	hlmac_create_root_addr(&root_addr, 1);
-	hlmactable_add(root_addr);
-	
-	#if LOG_DBG_STATISTIC == 1
-	printf("Periodic Statistics: node_id: %u, convergence_time_start\n", node_id);
-	#endif
-	
-	iotorii_send_sethlmac(root_addr, linkaddr_node_addr);
-	free(root_addr.address); //malloc() in hlmac_create_root_addr()
-	root_addr.address = NULL;
-	
-	//ctimer_reset(&sethlmac_timer); //Restart the timer from the previous expire time.
-	//ctimer_restart(&sethlmac_timer); //Restart the timer from current time.
-	//ctimer_stop(&sethlmac_timer); //Stop the timer.
-}
-#endif
-
-
-#if IOTORII_NODE_TYPE > 0 //ROOT O NODO COMÚN
-#if LOG_DBG_STATISTIC == 1
-
-static void iotorii_handle_statistic_timer ()
-{
-  printf("Periodic Statistics: node_id: %u, number_of_hello_messages: %d, number_of_sethlmac_messages: %d, number_of_neighbours: %d, number_of_hlmac_addresses: %d, sum_hop: %d\n", node_id, number_of_hello_messages, number_of_sethlmac_messages, number_of_neighbours, number_of_hlmac_addresses, hlmactable_calculate_sum_hop());
-
-  //ctimer_reset(&sethlmac_timer); //Restart the timer from the previous expire time.
-  //ctimer_restart(&sethlmac_timer); //Restart the timer from current time.
-  //ctimer_stop(&sethlmac_timer); //Stop the timer.
-}
-
-#endif
-#endif
-
-
-static void init(void)
-{
-	#if LLSEC802154_USES_AUX_HEADER
-	
-	#ifdef CSMA_LLSEC_DEFAULT_KEY0
-	uint8_t key[16] = CSMA_LLSEC_DEFAULT_KEY0;
-	csma_security_set_key(0, key);
-	#endif
-	
-	#endif /* LLSEC802154_USES_AUX_HEADER */
-	
-	csma_output_init(); //INICIALIZA VECINO
-	on();
-	
-	#if IOTORII_NODE_TYPE == 1 //INFORMA QUE ES ROOT
-	LOG_INFO("This node operates as a root.\n");
-	#endif
-	
-	#if IOTORII_NODE_TYPE > 1 //INFORMA QUE ES NODO COMÚN
-	LOG_INFO("This node operates as a common node.\n ");
-	#endif
-	
-	#if IOTORII_NODE_TYPE > 0 //ROOT O NODO COMÚN
-
-	/*
-	* dev/ds2411/ds2411.c : ds2411_id[0] = 0x00;
-	* arch/platform/sky/platform.c : random_init(ds2411_id[0]);
-	* If the number of nodes is hier than 255, the seed must be checked is whether
-	* unic or not for all nodes.
-	*/
-
-	//#ifdef CONTIKI_TARGET_SKY
-	unsigned short seed_number;
-	uint8_t min_len_seed = sizeof(unsigned short) < LINKADDR_SIZE ?  sizeof(unsigned short) : LINKADDR_SIZE;
-	
-	memcpy(&seed_number, &linkaddr_node_addr, min_len_seed);
-	random_init(seed_number); //SE INICIALIZA UN SEED NUMBER DIFERENTE PARA CADA NODO
-	
-	#if LOG_DBG_DEVELOPER == 1
-	LOG_DBG("Seed is %2.2X (%d), sizeof(Seed) is %u\n", seed_number, seed_number, min_len_seed);
-	#endif
-	//#endif /* CONTIKI_TARGET_SKY */
-
-	//SE PLANIFICA MENSAJE HELLO
-	clock_time_t hello_start_time = IOTORII_HELLO_START_TIME * CLOCK_SECOND;
-	hello_start_time = hello_start_time / 2 + (random_rand() % (hello_start_time / 2));
-	LOG_DBG("Scheduling a Hello message after %u ticks in the future\n", (unsigned)hello_start_time);
-	ctimer_set(&hello_timer, hello_start_time, iotorii_handle_hello_timer, NULL);
-
-	number_of_neighbours = 0;
-	hlmac_table_init(); //SE CREA LA TABLA DE VECINOS
-	
-	//ESTADÍSTICAS
-	#if LOG_DBG_STATISTIC == 1
-	clock_time_t statistic_start_time = IOTORII_STATISTICS_TIME * CLOCK_SECOND;
-	printf("Scheduling a statistic timer after %u ticks in the future\n", (unsigned)statistic_start_time);
-	ctimer_set(&statistic_timer, statistic_start_time, iotorii_handle_statistic_timer, NULL);
-	#endif
-	
-	#endif
-
-	#if IOTORII_NODE_TYPE == 1 //ROOT
-	//SE PLANIFICA MENSAJE SETHLMAC EN CASO DE SER ROOT
-	clock_time_t sethlmac_start_time;
-	sethlmac_start_time = IOTORII_SETHLMAC_START_TIME * CLOCK_SECOND;
-	LOG_DBG("Scheduling a SetHLMAC message after %u ticks in the future\n", (unsigned)sethlmac_start_time);
-	ctimer_set(&sethlmac_timer, sethlmac_start_time, iotorii_handle_sethlmac_timer, NULL);
-	#endif
-}
-
-
-#if IOTORII_NODE_TYPE > 0 //ROOT O NODO COMÚN
 void iotorii_handle_incoming_hello () //PROCESA UN PAQUETE HELLO (DE DIFUSIÓN) RECIBIDO DE OTROS NODOS
 {
 	const linkaddr_t *sender_addr = packetbuf_addr(PACKETBUF_ADDR_SENDER); //SE LEE EL BUFFER
@@ -769,7 +640,118 @@ void iotorii_operation (void)
 	//handle_handle_unicast();  //For handling an unicast packet received from another node
 }
 
-#endif //#if IOTORII_NODE_TYPE == 0
+
+#if LOG_DBG_STATISTIC == 1
+
+static void iotorii_handle_statistic_timer ()
+{
+	printf("Periodic Statistics: node_id: %u, number_of_hello_messages: %d, number_of_sethlmac_messages: %d, number_of_neighbours: %d, number_of_hlmac_addresses: %d, sum_hop: %d\n", node_id, number_of_hello_messages, number_of_sethlmac_messages, number_of_neighbours, number_of_hlmac_addresses, hlmactable_calculate_sum_hop());
+
+	//ctimer_reset(&sethlmac_timer); //Restart the timer from the previous expire time.
+	//ctimer_restart(&sethlmac_timer); //Restart the timer from current time.
+	//ctimer_stop(&sethlmac_timer); //Stop the timer.
+}
+
+#endif
+
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+#if IOTORII_NODE_TYPE == 1 //ROOT
+
+static void iotorii_handle_sethlmac_timer ()
+{
+	//uint8_t id = 1;
+	hlmacaddr_t root_addr; //SE CREA EL ROOT
+	hlmac_create_root_addr(&root_addr, 1);
+	hlmactable_add(root_addr);
+	
+	#if LOG_DBG_STATISTIC == 1
+	printf("Periodic Statistics: node_id: %u, convergence_time_start\n", node_id);
+	#endif
+	
+	iotorii_send_sethlmac(root_addr, linkaddr_node_addr);
+	free(root_addr.address); //malloc() in hlmac_create_root_addr()
+	root_addr.address = NULL;
+	
+	//ctimer_reset(&sethlmac_timer); //Restart the timer from the previous expire time.
+	//ctimer_restart(&sethlmac_timer); //Restart the timer from current time.
+	//ctimer_stop(&sethlmac_timer); //Stop the timer.
+}
+
+#endif
+
+
+static void init (void)
+{
+	#if LLSEC802154_USES_AUX_HEADER
+	
+	#ifdef CSMA_LLSEC_DEFAULT_KEY0
+	uint8_t key[16] = CSMA_LLSEC_DEFAULT_KEY0;
+	csma_security_set_key(0, key);
+	#endif
+	
+	#endif /* LLSEC802154_USES_AUX_HEADER */
+	
+	csma_output_init(); //INICIALIZA VECINO
+	on();
+	
+	#if IOTORII_NODE_TYPE == 1 //INFORMA QUE ES ROOT
+	LOG_INFO("This node operates as a root.\n");
+	#endif
+	
+	#if IOTORII_NODE_TYPE > 1 //INFORMA QUE ES NODO COMÚN
+	LOG_INFO("This node operates as a common node.\n ");
+	#endif
+	
+	#if IOTORII_NODE_TYPE > 0 //ROOT O NODO COMÚN
+
+	/*
+	* dev/ds2411/ds2411.c : ds2411_id[0] = 0x00;
+	* arch/platform/sky/platform.c : random_init(ds2411_id[0]);
+	* If the number of nodes is hier than 255, the seed must be checked is whether
+	* unic or not for all nodes.
+	*/
+
+	//#ifdef CONTIKI_TARGET_SKY
+	unsigned short seed_number;
+	uint8_t min_len_seed = sizeof(unsigned short) < LINKADDR_SIZE ?  sizeof(unsigned short) : LINKADDR_SIZE;
+	
+	memcpy(&seed_number, &linkaddr_node_addr, min_len_seed);
+	random_init(seed_number); //SE INICIALIZA UN SEED NUMBER DIFERENTE PARA CADA NODO
+	
+	#if LOG_DBG_DEVELOPER == 1
+	LOG_DBG("Seed is %2.2X (%d), sizeof(Seed) is %u\n", seed_number, seed_number, min_len_seed);
+	#endif
+	//#endif /* CONTIKI_TARGET_SKY */
+
+	//SE PLANIFICA MENSAJE HELLO
+	clock_time_t hello_start_time = IOTORII_HELLO_START_TIME * CLOCK_SECOND;
+	hello_start_time = hello_start_time / 2 + (random_rand() % (hello_start_time / 2));
+	LOG_DBG("Scheduling a Hello message after %u ticks in the future\n", (unsigned)hello_start_time);
+	ctimer_set(&hello_timer, hello_start_time, iotorii_handle_hello_timer, NULL);
+
+	number_of_neighbours = 0;
+	hlmac_table_init(); //SE CREA LA TABLA DE VECINOS
+	
+	//ESTADÍSTICAS
+	#if LOG_DBG_STATISTIC == 1
+	clock_time_t statistic_start_time = IOTORII_STATISTICS_TIME * CLOCK_SECOND;
+	printf("Scheduling a statistic timer after %u ticks in the future\n", (unsigned)statistic_start_time);
+	ctimer_set(&statistic_timer, statistic_start_time, iotorii_handle_statistic_timer, NULL);
+	#endif
+	
+	#endif
+
+	#if IOTORII_NODE_TYPE == 1 //ROOT
+	//SE PLANIFICA MENSAJE SETHLMAC EN CASO DE SER ROOT
+	clock_time_t sethlmac_start_time;
+	sethlmac_start_time = IOTORII_SETHLMAC_START_TIME * CLOCK_SECOND;
+	LOG_DBG("Scheduling a SetHLMAC message after %u ticks in the future\n", (unsigned)sethlmac_start_time);
+	ctimer_set(&sethlmac_timer, sethlmac_start_time, iotorii_handle_sethlmac_timer, NULL);
+	#endif
+}
 
 
 static void input_packet (void) //SE RECIBE UN PAQUETE 

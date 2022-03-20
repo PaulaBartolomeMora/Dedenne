@@ -82,3 +82,49 @@ int csma_security_set_key (uint8_t index, const uint8_t *key);
 
 
 #endif /* IOTORII_CSMA_H_ */
+
+/*
+
+init (void)
+///////////
+	--> csma_output_init()	...INICIALIZA MIEMBRO
+	--> on()
+	--> ctimer_set(&hello_timer, hello_start_time, iotorii_handle_hello_timer, NULL);
+		--> max_payload()
+		--> send_packet(NULL, NULL)
+	--> ctimer_set(&statistic_timer, statistic_start_time, iotorii_handle_statistic_timer, NULL);
+	--> //ROOT// ctimer_set(&sethlmac_timer, sethlmac_start_time, iotorii_handle_sethlmac_timer, NULL);
+		--> hlmac_create_root_addr(&root_addr, 1)
+		-->	hlmactable_add(root_addr) ...AÑADE LA DIRECCIÓN HLMAC ASIGNADA A LA TABLA DEL NODO SIEMPRE QUE NO SUPERE EL MAX
+		--> iotorii_send_sethlmac(root_addr, linkaddr_node_addr)
+			--> max_payload()
+///////////
+
+
+
+send_packet (mac_callback_t sent, void *ptr)
+///////////
+	-->	init_sec()
+	-->	csma_output_packet(sent, ptr)	...PAQUETE DE SALIDA
+		--> neighbor_queue_from_addr(addr) 
+		--> schedule_transmission(n)
+///////////
+
+
+
+input_packet (void)	...SE RECIBE PAQUETE Y SE REALIZAN COMPROBACIONES
+///////////
+	--> iotorii_operation()
+		--> //msg HELLO// iotorii_handle_incoming_hello() ...PROCESA HELLO Y AÑADE AL VECINO A SU TABLA DE VECINOS
+		--> //msg setHLMAC// iotorii_handle_incoming_sethlamc()	...PROCESA setHLMAC
+			--> iotorii_extract_address() ...SE COGE LA DIRECCIÓN DEL EMISOR
+			--> hlmactable_has_loop(*received_hlmac_addr) ...COMPRUEBA QUE NO HAY BUCLE
+			--> hlmactable_add(*received_hlmac_addr) ...AÑADE LA DIRECCIÓN HLMAC ASIGNADA A LA TABLA DEL NODO SIEMPRE QUE NO SUPERE EL MAX
+///////////
+
+
+on
+
+off
+
+max_payload

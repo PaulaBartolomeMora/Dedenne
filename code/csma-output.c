@@ -1,11 +1,11 @@
 
 
-//EXTRA BEGIN
+
 // #include "net/mac/csma/csma.h"
 // #include "net/mac/csma/csma-security.h"
-  #include "iotorii-csma.h"
-  #include "csma-security.h"
-//EXTRA END
+#include "iotorii-csma.h"
+#include "csma-security.h"
+
 #include "net/packetbuf.h"
 #include "net/queuebuf.h"
 #include "dev/watchdog.h"
@@ -114,7 +114,7 @@ static void transmit_from_queue (void *ptr);
 
 /*---------------------------------------------------------------------------*/
 
-static struct neighbor_queue* neighbor_queue_from_addr (const linkaddr_t *addr) //SE AÑADE LA COLA DE UN VECINO
+static struct neighbor_queue* neighbor_queue_from_addr (const linkaddr_t *addr) //DEVUELVE LA COLA DE UN VECINO SEGÚN LA DIRECCIÓN DADA
 {
 	struct neighbor_queue *n = list_head(neighbor_list);
 	
@@ -443,13 +443,13 @@ void csma_output_packet (mac_callback_t sent, void *ptr)
 	
 		if (n != NULL) //SE HA ASIGNADO BIEN EL VECINO
 		{
-		  linkaddr_copy(&n->addr, addr); //INICIALIZA LA ENTRADA
+			linkaddr_copy(&n->addr, addr); //INICIALIZA LA ENTRADA
 		  
-		  n->transmissions = 0;
-		  n->collisions = 0;
+			n->transmissions = 0;
+			n->collisions = 0;
 		  
-		  LIST_STRUCT_INIT(n, packet_queue); //INICIALIZA SU COLA 
-		  list_add(neighbor_list, n); //AÑADE AL VECINO A LA LISTA DE VECINOS
+			LIST_STRUCT_INIT(n, packet_queue); //INICIALIZA SU COLA 
+			list_add(neighbor_list, n); //AÑADE AL VECINO A LA LISTA DE VECINOS
 		}
 	}
 	
@@ -474,7 +474,7 @@ void csma_output_packet (mac_callback_t sent, void *ptr)
 						
 						if (metadata->max_transmissions == 0) //SI NO SE HA DEFINIDO EL MÁXIMO SE UTILIZA EL VALOR CSMA POR DEFECTO
 						{
-						  metadata->max_transmissions = CSMA_MAX_FRAME_RETRIES + 1; 
+							metadata->max_transmissions = CSMA_MAX_FRAME_RETRIES + 1; 
 						}
 						
 						metadata->sent = sent;
@@ -507,7 +507,7 @@ void csma_output_packet (mac_callback_t sent, void *ptr)
 		} 
 		
 		else //SI LA COLA YA ESTÁ LLENA NO SE PUEDEN AÑADIR PAQUETES
-		  LOG_WARN("Neighbor queue full\n");
+			LOG_WARN("Neighbor queue full\n");
 		
 		LOG_WARN("could not allocate packet, dropping packet\n"); 
 	} 
