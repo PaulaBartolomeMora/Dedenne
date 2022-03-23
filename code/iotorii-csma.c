@@ -93,7 +93,30 @@ struct payload_entry //ESTRUCTURA DE ENTRADA DE TABLA PARA DIRECCIONES DE RECEPT
 typedef struct payload_entry payload_entry_t;
 LIST(payload_entry_list);
 
+void list_node_priority_entry (payload_entry_t *a, hlmacaddr_t *addr); //GUARDA INFO EN node_priority
+
+/*---------------------------------------------------------------------------*/
+
+struct node_priority //ESTRUCTURA DE ENTRADA DE TABLA DE PRIORIDADES Y DE RELACIONES PADRE-HIJO
+{
+	struct node_priority *next;
+	char* str_addr;
+	char* str_top_addr;
+	uint8_t priority;
+	uint8_t nhops;
+	//uint8_t flag; //0 NO TACHADO, 1 PADRE, 2 HIJO /////
+};
+
+typedef struct node_priority node_priority_t;
+LIST(node_priority_list); //SE CREA LA TABLA
+
+/*---------------------------------------------------------------------------*/
+
 #endif
+
+char *lista_link;
+int indice_link = 0;
+int MAX_PRIORIDAD = 0; //REGISTRA LA PRIORIDAD DE LOS NODOS COMUNES, CUANTO MAYOR MÁS LEJOS DEL ROOT
 
 /*---------------------------------------------------------------------------*/
 
@@ -161,7 +184,7 @@ static void iotorii_handle_hello_timer ()
 
 		#if LOG_DBG_STATISTIC == 1
 		number_of_hello_messages++; //SE INCREMENTA EL NÚMERO DE MENSAJES HELLO
-		printf("Number of Hello messages: %d\n", number_of_hello_messages);
+		//printf("Number of Hello messages: %d\n", number_of_hello_messages);				/////////
 		#endif
 
 		send_packet(NULL, NULL);
@@ -202,7 +225,7 @@ void iotorii_handle_send_sethlmac_timer ()
 
 		#if LOG_DBG_STATISTIC == 1
 		number_of_sethlmac_messages++; //SE INCREMENTA EL NÚMERO DE MENSAJES SETHLMAC
-		printf("Number of SetHLMAC messages: %d\n", number_of_sethlmac_messages);
+		//printf("Number of SetHLMAC messages: %d\n", number_of_sethlmac_messages);					//////
 		#endif
 		
 		if (list_head(payload_entry_list)) //SI LA LISTA TIENE UNA ENTRADA 
@@ -225,6 +248,12 @@ void iotorii_handle_send_sethlmac_timer ()
 
 void iotorii_send_sethlmac (hlmacaddr_t addr, linkaddr_t sender_link_address)
 {
+	//char* plista = link_addr_to_str(sender_link_address);
+	//lista_link[indice_link] = *plista;
+	//indice_link++;
+	
+	//int k = 1; //printf
+	
 	int mac_max_payload = max_payload();
 	
 	if (mac_max_payload <= 0) //FRAMING HA FALLADO Y SETHLMAC NO SE PUEDE CREAR
@@ -244,6 +273,9 @@ void iotorii_send_sethlmac (hlmacaddr_t addr, linkaddr_t sender_link_address)
 
 		for (neighbour_entry = list_head(neighbour_table_entry_list); neighbour_entry != NULL; neighbour_entry = list_item_next(neighbour_entry))
 		{
+			//printf("VECINO %d: ID %d tiene flag %d\n", k, neighbour_entry->id, neighbour_entry->flag);
+			//k++;
+			
 			if (linkaddr_cmp(&neighbour_entry->addr, &sender_link_address)) //SE BORRA EL NODO EMISOR DEL MENSAJE SETHLMAC RECIBIDO DEL NUEVO PAYLOAD
 			{
 				number_of_neighbours_new = number_of_neighbours - 1;
@@ -366,12 +398,15 @@ void iotorii_send_sethlmac (hlmacaddr_t addr, linkaddr_t sender_link_address)
 				}
 				else //SI NO ESTÁ VACÍA NO SE CONFIGURA EL TIEMPO Y DIRECTAMENTE SE AÑADE LA ENTRADA DE PAYLOAD
 					list_add(payload_entry_list, payload_entry);
+					
+				list_node_priority_entry (payload_entry, &addr);	/////
 
-				#if LOG_DBG_DEVELOPER == 1
+				//#if LOG_DBG_DEVELOPER == 1
 				char *neighbour_hlmac_addr_str = hlmac_addr_to_str(addr);
+				printf("SetHLMAC prefix (addr:%s) added to queue to advertise to %d nodes.\n", neighbour_hlmac_addr_str, i-1);
 				LOG_DBG("SetHLMAC prefix (addr:%s) added to queue to advertise to %d nodes.\n", neighbour_hlmac_addr_str, i-1);
 				free(neighbour_hlmac_addr_str);
-				#endif
+				//#endif
 
 			}
 			
@@ -616,8 +651,18 @@ void iotorii_handle_incoming_sethlamc () //PROCESA UN MENSAJE DE DIFUSIÓN SETHL
 			received_hlmac_addr = NULL;
 		}
 	}
+	
+	neighbour_table_entry_t vecino;
+	vecino.id = node_id;
+	
+	//char *hlmac_recibida = hlmac_addr_to_str(*received_hlmac_addr);
+	
+	check_flag(vecino, received_hlmac_addr);
+	
 	#if LOG_DBG_STATISTIC == 1
-	printf("Periodic Statistics: node_id: %u, convergence_time_end\n", node_id);
+	//printf("Periodic Statistics: node_id: %u, convergence_time_end\n", node_id);
+	//printf("NODO ID: %d, NODO FLAG: %d, NODO PADRE: %s\n", vecino.id, vecino.flag, link_addr_to_str(vecino.addr));
+	//printf("SENDER: %s, RECEIVER: %s\n", link_addr_to_str(sender_link_address), hlmac_addr_to_str(*received_hlmac_addr));
 	#endif
 }
 
@@ -645,7 +690,18 @@ void iotorii_operation (void)
 
 static void iotorii_handle_statistic_timer ()
 {
-	printf("Periodic Statistics: node_id: %u, number_of_hello_messages: %d, number_of_sethlmac_messages: %d, number_of_neighbours: %d, number_of_hlmac_addresses: %d, sum_hop: %d\n", node_id, number_of_hello_messages, number_of_sethlmac_messages, number_of_neighbours, number_of_hlmac_addresses, hlmactable_calculate_sum_hop());
+	printf("Periodic Statistics: node_id: %u, nº hello: %d, nº sethlmac: %d, nº neighbours: %d, sum_hop: %d\n", node_id, number_of_hello_messages, number_of_sethlmac_messages, number_of_neighbours, hlmactable_calculate_sum_hop());
+	
+	//printf("MAX PRIORIDAD = %d\n", MAX_PRIORIDAD);	
+	
+	//printf("LISTA LINKADDR\n");
+	//int i;
+	/*for (i = 0; i < indice_link; i++)
+	{
+		//printf("%s", lista_link[i]);
+		printf("dir[%d]\n", i);
+		printf("%s", &lista_link[i]);
+	}*/
 
 	//ctimer_reset(&sethlmac_timer); //Restart the timer from the previous expire time.
 	//ctimer_restart(&sethlmac_timer); //Restart the timer from current time.
@@ -836,3 +892,98 @@ const struct mac_driver iotorii_csma_driver = { "IoTorii CSMA",
 	max_payload,
 };
 
+char *link_addr_to_str (const linkaddr_t addr)
+{
+	char *address = (char*) malloc (sizeof(char) * (LINKADDR_SIZE * (2 + 1) + 1)); //SE AÑADE ESPACIO PARA LOS . Y PARA '\0'
+	char *s = (char *)address;
+	uint8_t i;
+	
+	for (i = 0; i < LINKADDR_SIZE; i++, s += 3)
+	    sprintf(s, "%2.2X.", (char)addr.u16[i]);
+	
+	*(s) = '\0'; //SE AÑADE '\0' AL FINAL
+	
+	return address;
+}
+
+/*
+void check_flag (neighbour_table_entry_t addr_flag, hlmacaddr_t *received_hlmac_addr)
+{
+	//si la direccion recibida cmp con la
+	//addr_flag = hlmac_cmp(received_hlmac_addr, received_hlmac_addr);
+	addr_flag.flag = 1;
+	return;
+
+
+//COMPARA LA LONGITUD DE DOS DIRECCIONES HLMAC
+//DEVUELVE 0 SI SON IGUALES, +1 SI 2 ES MAYOR, -1 SI 1 ES MAYOR
+}*/
+
+/*void list_payload_entry (payload_entry_t *a, hlmacaddr_t *addr)
+{
+	payload_entry_t *aux = a;
+	//int i = 0;
+	//uint8_t *temp_addr; 
+	node_priority_t *new_address;
+	
+	while (aux != NULL)
+	{
+		if (*aux->payload > MAX_PRIORIDAD)
+			MAX_PRIORIDAD = *aux->payload;
+		
+		printf("PRIORIDAD: %d\n", *aux->payload);
+		
+		new_address = (node_priority_t*) malloc (sizeof(node_priority_t)); //SE RESERVA ESPACIO
+		//new_address->addr.address = &addr->address;
+		
+		//temp_addr = addr->address; //AUX PARA GUARDAR DESPUÉS ADDR DEL PADRE
+		//new_address->top_addr.address = (uint8_t*) malloc (sizeof(uint8_t) * (addr.len - 1));
+	
+		for (i = 0; i < addr.len-1; i++) 
+		{ 
+			new_address->top_addr.address[i] = temp_addr[i]; //SE GUARDA LA DIRECCIÓN HASTA LA PENÚLTIMA POSICIÓN
+		}		
+		new_address->top_addr.len = hlmac_get_len(&addr);
+		
+		new_address->priority = *aux->payload;
+		new_address->nhops = hlmactable_calculate_sum_hop();
+		
+		printf("ADDR: %s, ADDR PADRE: %s, PRIORIDAD: %d, NHOPS: %d\n", hlmac_addr_to_str(*addr), hlmac_addr_to_str(*addr), new_address->priority, new_address->nhops);
+		//printf("ADDR: %s, ADDR PADRE: %s, PRIORIDAD: %d, NHOPS: %d\n", hlmac_addr_to_str(new_address->addr), hlmac_addr_to_str(new_address->top_addr), new_address->priority, new_address->nhops);
+		list_add(node_priority_list, new_address); //SE AÑADE A LA LISTA
+		aux = aux->next;
+	}
+}*/
+
+void list_node_priority_entry (payload_entry_t *a, hlmacaddr_t *addr)
+{
+	payload_entry_t *aux = a;
+	node_priority_t *new_address;
+	
+	char* str_addr = hlmac_addr_to_str(*addr);
+	char* str_top_addr = (char*) malloc (20);
+
+	if (addr->len > 1)
+		strncpy(str_top_addr, str_addr, (addr->len-1)*3);
+	else
+		str_top_addr = "/";
+	
+	while (aux != NULL)
+	{
+		if (*aux->payload > MAX_PRIORIDAD)
+			MAX_PRIORIDAD = *aux->payload;
+		
+		//printf("PRIORIDAD: %d\n", *aux->payload);
+		
+		new_address = (node_priority_t*) malloc (sizeof(node_priority_t)); //SE RESERVA ESPACIO
+		
+		new_address->str_addr = str_addr;
+		new_address->str_top_addr = str_top_addr;
+		new_address->priority = *aux->payload;
+		new_address->nhops = hlmactable_calculate_sum_hop();
+		
+		printf("ADDR: %s | ADDR PADRE: %s | PRIORIDAD: %d | NHOPS: %d\n", new_address->str_addr, new_address->str_top_addr, new_address->priority, new_address->nhops);
+		list_add(node_priority_list, new_address); //SE AÑADE A LA LISTA
+		aux = aux->next;
+	}
+}

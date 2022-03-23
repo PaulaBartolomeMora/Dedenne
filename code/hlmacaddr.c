@@ -41,7 +41,7 @@ uint8_t *hlmac_get_address (const hlmacaddr_t addr)
 }
 
 
-void hlmac_create_root_addr (hlmacaddr_t * root_addr, const uint8_t root_id)
+void hlmac_create_root_addr (hlmacaddr_t *root_addr, const uint8_t root_id)
 {
   root_addr->address = (uint8_t*) malloc (sizeof(uint8_t));
   root_addr->address[0] = root_id;
@@ -170,3 +170,5 @@ char *hlmac_addr_to_str (const hlmacaddr_t addr)
 	
 	return address;
 }
+
+

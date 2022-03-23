@@ -43,7 +43,7 @@ uint8_t hlmactable_add (const hlmacaddr_t addr)
 		#if LOG_DBG_DEVELOPER == 1 || LOG_DBG_STATISTIC == 1
 		
 		char *addr_str = hlmac_addr_to_str(addr); //SE CONVIERTE LA DIRECCION A STRING PARA EL PRINTF
-		printf("Periodic Statistics: HLMAC address: %s saved to HLMAC table.\n", addr_str);
+		//printf("Periodic Statistics: HLMAC address: %s saved to HLMAC table.\n", addr_str);			///////
 		
 		free(addr_str); //SE LIMPIA LA VARIABLE
 		addr_str = NULL;

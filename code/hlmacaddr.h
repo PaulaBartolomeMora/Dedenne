@@ -49,7 +49,7 @@ uint8_t hlmac_get_len (const hlmacaddr_t addr);
 uint8_t *hlmac_get_address (const hlmacaddr_t addr);
 
 //CREA NUEVA DIRECCIÓN HLMAC CON ID ROOT
-void hlmac_create_root_addr (hlmacaddr_t * root_addr, const uint8_t root_id);
+void hlmac_create_root_addr (hlmacaddr_t *root_addr, const uint8_t root_id);
 
 //void setIndexValue(unsigned uint8_t k, unsigned uint8_t addrbyte);
 
@@ -68,5 +68,7 @@ uint8_t get_addr_index_value (const hlmacaddr_t addr, const uint8_t k);
 
 //DEVUELVE EL CAMPO ADDRESS DE UNA DIRECCIÓN HLMAC DETERMINADA COMO STRING Y AÑADE '\0' AL FINAL
 char *hlmac_addr_to_str(hlmacaddr_t addr);
+
+
 
 #endif /* HLMACADDR_H_ */
