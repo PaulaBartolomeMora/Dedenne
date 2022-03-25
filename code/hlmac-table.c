@@ -38,6 +38,7 @@ uint8_t hlmactable_add (const hlmacaddr_t addr)
 		entry->address = addr; //SE ASIGNA LA DIRECCIÓN DADA
 		
 		list_add (hlmac_table_entery_list, entry);
+
 		number_of_hlmac_addresses++; //SE AUMENTA LA VARIABLE
 
 		#if LOG_DBG_DEVELOPER == 1 || LOG_DBG_STATISTIC == 1
