@@ -8,13 +8,13 @@
 
 /*---------------------------------------------------------------------------*/
 
-struct hlmac_table_entery
+struct hlmac_table_entry
 {
-	struct hlmac_table_entery *next;
+	struct hlmac_table_entry *next;
 	hlmacaddr_t address;
 };
 
-typedef struct hlmac_table_entery hlmac_table_entery_t;
+typedef struct hlmac_table_entry hlmac_table_entry_t;
 uint8_t number_of_hlmac_addresses;
 
 /*---------------------------------------------------------------------------*/

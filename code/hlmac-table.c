@@ -34,7 +34,7 @@ uint8_t hlmactable_add (const hlmacaddr_t addr)
 	
 	if ( (HLMAC_MAX_HLMAC == -1) || ((HLMAC_MAX_HLMAC != -1)&&(number_of_hlmac_addresses < HLMAC_MAX_HLMAC)) ) //SI NO SE HA SUPERADO LA CAPACIDAD DE LA TABLA
 	{
-		hlmac_table_entery_t* entry = (hlmac_table_entery_t*) malloc (sizeof(hlmac_table_entery_t)); //SE RESERVA ESPACIO
+		hlmac_table_entry_t* entry = (hlmac_table_entry_t*) malloc (sizeof(hlmac_table_entry_t)); //SE RESERVA ESPACIO
 		entry->address = addr; //SE ASIGNA LA DIRECCIÓN DADA
 		
 		list_add (hlmac_table_entry_list, entry);
@@ -133,7 +133,7 @@ hlmacaddr_t* hlmactable_get_longest_matchhed_prefix (const hlmacaddr_t address)
 
 	hlmac_remove_Last_id(addr); //LAS DIRECCIONES NO PUEDEN SER PREFIJO DE SÍ MISMAS
 
-	hlmac_table_entery_t *table_entry;
+	hlmac_table_entry_t *table_entry;
 
 	while (hlmac_get_len(*addr) > 0) //SE BUSCA LA DIRECCIÓN EN LA TABLA MIENTRAS LA LONGITUD NO SEA NULA
 	{
@@ -154,7 +154,7 @@ hlmacaddr_t* hlmactable_get_longest_matchhed_prefix (const hlmacaddr_t address)
 int hlmactable_calculate_sum_hop (void)
 {
 	int sum = 0;
-	hlmac_table_entery_t *table_entry;
+	hlmac_table_entry_t *table_entry;
 	
 	for (table_entry = list_head(hlmac_table_entry_list); table_entry != NULL; table_entry = table_entry->next)
 	{

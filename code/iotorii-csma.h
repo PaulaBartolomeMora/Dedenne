@@ -55,6 +55,7 @@ struct neighbour_table_entry //ESTRUCTURA DE ENTRADA DE TABLA
 	struct neighbour_table_entry *next;
 	linkaddr_t addr;
 	uint8_t number_id;
+	uint8_t flag;
 };
 
 typedef struct neighbour_table_entry neighbour_table_entry_t;

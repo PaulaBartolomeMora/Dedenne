@@ -112,9 +112,6 @@ void list_node_priority_entry (payload_entry_t *a, hlmacaddr_t *addr); //GUARDA 
 uint8_t edge = 0; //INDICA QUE EL NODO ES EDGE SI ES 1
 uint8_t init_node_done = 0;
 
-//char* neightbours_addrs[];
-uint8_t n_addr = 0; //INDICE
-
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -174,10 +171,7 @@ static void iotorii_handle_hello_timer ()
 	else
 	{
 		packetbuf_clear(); //HELLO NO TIENE PAYLOAD
-		/*
-		* The destination address, the broadcast address, is tagged to the outbound
-		* packet.
-		*/
+		//The destination address, the broadcast address, is tagged to the outbound packet
 		packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &linkaddr_null);
 		LOG_DBG("Hello prepared to send\n");
 
@@ -215,10 +209,7 @@ void iotorii_handle_send_sethlmac_timer ()
 		free(payload_entry);
 		payload_entry = NULL;
 
-		/*
-		* Control info: the destination address, the broadcast address, is tagged to the outbound
-		* packet.
-		*/
+		//Control info: the destination address, the broadcast address, is tagged to the outbound packet
 		packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &linkaddr_null);
 		LOG_DBG("Queue: SetHLMAC prepared to send\n");
 
@@ -446,9 +437,7 @@ void iotorii_handle_incoming_hello () //PROCESA UN PAQUETE HELLO (DE DIFUSIÓN) 
 			new_nb->number_id = ++number_of_neighbours;
 			number_of_neighbours_flag++;
 			new_nb->addr = *sender_addr;
-			
-			//neightbours_addrs[n_addr] = link_addr_to_str(sender_addr);
-			n_addr++;
+			new_nb->flag = 0;
 			
 			list_add(neighbour_table_entry_list, new_nb); //SE AÑADE A LA LISTA
 			
@@ -545,29 +534,25 @@ hlmacaddr_t *iotorii_extract_address (void) //SE EXTRAE LA DIRECCIÓN DEL NODO E
 
 void iotorii_handle_incoming_sethlamc () //PROCESA UN MENSAJE DE DIFUSIÓN SETHLMAC RECIBIDO DE OTROS NODOS
 {
-	//#if LOG_DBG_DEVELOPER == 1
 	LOG_DBG("A SetHLMAC message received from ");
 	LOG_DBG_LLADDR(packetbuf_addr(PACKETBUF_ADDR_SENDER));
 	LOG_DBG("\n");
-	//#endif
 
 	hlmacaddr_t *received_hlmac_addr;
 	linkaddr_t sender_link_address = *packetbuf_addr(PACKETBUF_ADDR_SENDER);
 	received_hlmac_addr = iotorii_extract_address(); //SE COGE LA DIRECCIÓN RECIBIDA
+	
+	const linkaddr_t *sender = &sender_link_address;
+	neighbour_table_entry_t *neighbour_entry;
 
 	if (hlmac_is_unspecified_addr(*received_hlmac_addr)) //SI NO SE ESPECIFICA DIRECCIÓN, NO HAY PARA EL NODO
-	{
-		//#if LOG_DBG_DEVELOPER == 1
 		LOG_DBG("Packet doesn't have any address for me!\n");
-		//#endif
-	}
+	
 	else //ESTÁ ESPECIFICADA
 	{
-		//#if LOG_DBG_DEVELOPER == 1
 		char *new_hlmac_addr_str = hlmac_addr_to_str(*received_hlmac_addr);
 		LOG_DBG("New HLMAC is: %s\n", new_hlmac_addr_str);
 		free(new_hlmac_addr_str);
-		//#endif
 
 		if (!hlmactable_has_loop(*received_hlmac_addr)) //SI HAY BUCLE, SI SE LA MANDA EL HIJO
 		{
@@ -582,8 +567,6 @@ void iotorii_handle_incoming_sethlamc () //PROCESA UN MENSAJE DE DIFUSIÓN SETHL
 			else //NO SE HA ASIGNADO
 			{
 				LOG_DBG("New HLMAC address not added to the HLMAC table, and memory is free.\n");
-
-				number_of_neighbours_flag--; //SE DECREMENTA EL NÚMERO DE VECINOS DE LOS QUE SE RECIBE HLMAC
 				
 				//list_remove(neighbour_table_entry_list, received_hlmac_addr); 
 				//list_chop(neighbour_table_entry_list);
@@ -593,12 +576,18 @@ void iotorii_handle_incoming_sethlamc () //PROCESA UN MENSAJE DE DIFUSIÓN SETHL
 				free(received_hlmac_addr);
 				received_hlmac_addr = NULL;
 			}
+			
+			//BÚSQUEDA DE LA DIRECCIÓN DEL EMISOR EN LA LISTA DE VECINOS 
+			for (neighbour_entry = list_head(neighbour_table_entry_list); neighbour_entry != NULL; neighbour_entry = list_item_next(neighbour_entry))
+			{
+				if (linkaddr_cmp(&neighbour_entry->addr, sender))
+					neighbour_entry->flag = 1; //SE MARCA COMO "PADRE" ESE VECINO
+			}
+			number_of_neighbours_flag--; //SE DECREMENTA EL NÚMERO DE VECINOS DE LOS QUE NO SE HA RECIBIDO HLMAC
 		}
 		else
 		{
-			//#if LOG_DBG_DEVELOPER == 1
 			LOG_DBG("New HLMAC address not assigned to the node (loop), and memory is free.\n");
-			//#endif
 			
 			free(received_hlmac_addr->address);
 			received_hlmac_addr->address = NULL;
@@ -607,32 +596,15 @@ void iotorii_handle_incoming_sethlamc () //PROCESA UN MENSAJE DE DIFUSIÓN SETHL
 		}
 	}
 	
-	//neighbour_table_entry_t *nb;
-	
-	/*for (nb = list_head(neighbour_table_entry_list); nb != NULL; nb = list_item_next(nb))
-	{
-		if (linkaddr_cmp(&nb->addr, &sender_link_address) == 0)
-			nb->number_id = node_id;		
-	}*/
-
-	printf("Tabla de vecinos\n");
-	/*int i;
-	
-	for (i = 0; i < n_addr; i++)
-		printf("Address: %s ", neightbours_addrs[i]); 		//DESCOMENTAR CUANDO SE DEFINA BIEN
-	printf("\n");*/
-
-	
 	#if LOG_DBG_STATISTIC == 1
-	//printf("Periodic Statistics: node_id: %u, convergence_time_end\n", node_id);
+	printf("Periodic Statistics: node_id: %u, convergence_time_end\n", node_id);
+	
 	//printf("NODO ID: %d, NODO FLAG: %d, NODO PADRE: %s\n", vecino.id, vecino.flag, link_addr_to_str(vecino.addr));
 	//printf("SENDER: %s, RECEIVER: %s\n", link_addr_to_str(sender_link_address), hlmac_addr_to_str(*received_hlmac_addr));
 	#endif
 	//printf("%d VECINOS!!!!!\n", list_length(neighbour_table_entry_list));
-	//printf("FLAG = %d\n", vecino.flag);
 	//list_remove(neighbour_table_entry_list, vecino);
 	//list_chop(neighbour_table_entry_list);
-	//printf("%d VECINOS!!!!!\n", list_length(neighbour_table_entry_list));
 }
 
 
@@ -661,20 +633,9 @@ static void iotorii_handle_statistic_timer ()
 {
 	printf("Periodic Statistics: node_id: %u, nº hello: %d, nº sethlmac: %d, nº neighbours: %d, sum_hop: %d\n", node_id, number_of_hello_messages, number_of_sethlmac_messages, number_of_neighbours, hlmactable_calculate_sum_hop());
 	
-	
-	//printf("LISTA LINKADDR\n");
-	//int i;
-	/*for (i = 0; i < indice_link; i++)
-	{
-		//printf("%s", lista_link[i]);
-		printf("dir[%d]\n", i);
-		printf("%s", &lista_link[i]);
-	}*/
-	//print_struct_node_priority();
 
 	//printf("%d %d VECINOS!!!!!\n", list_length(neighbour_table_entry_list), number_of_neighbours);
 	
-	number_of_neighbours_flag--; 
 	printf("El nodo tiene %d vecinos y no ha recibido HLMAC de %d vecinos: ", number_of_neighbours, number_of_neighbours_flag);
 	
 	if (!number_of_neighbours_flag)
@@ -684,6 +645,12 @@ static void iotorii_handle_statistic_timer ()
 	}
 	else
 		printf("NO ES NODO EDGE\n");
+	
+	
+	neighbour_table_entry_t *nb;
+	
+	for (nb = list_head(neighbour_table_entry_list); nb != NULL; nb = list_item_next(nb))
+		printf("flag: %d\n", nb->flag);		
 	
 	//ctimer_reset(&sethlmac_timer); //Restart the timer from the previous expire time.
 	//ctimer_restart(&sethlmac_timer); //Restart the timer from current time.
