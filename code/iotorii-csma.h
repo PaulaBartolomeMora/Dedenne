@@ -54,12 +54,12 @@ struct neighbour_table_entry //ESTRUCTURA DE ENTRADA DE TABLA
 {
 	struct neighbour_table_entry *next;
 	linkaddr_t addr;
-	uint8_t id;
-	uint8_t flag;
+	uint8_t number_id;
 };
 
 typedef struct neighbour_table_entry neighbour_table_entry_t;
 uint8_t number_of_neighbours;
+uint8_t number_of_neighbours_flag; //PARA COMPROBAR SI EL NODO ES EDGE
 
 /* just a default - with LLSEC, etc */
 #define CSMA_MAC_MAX_HEADER 21
@@ -85,8 +85,6 @@ int csma_security_set_key (uint8_t index, const uint8_t *key);
 
 //adicional
 char *link_addr_to_str (const linkaddr_t addr);
-//void check_edge (neighbour_table_entry_t addr_flag, hlmacaddr_t *received_hlmac_addr);
-
 
 #endif /* IOTORII_CSMA_H_ */
 

@@ -105,7 +105,7 @@ struct packet_queue //COLA DE PAQUETES DEL VECINO
 MEMB(neighbor_memb, struct neighbor_queue, CSMA_MAX_NEIGHBOR_QUEUES);
 MEMB(packet_memb, struct packet_queue, MAX_QUEUED_PACKETS);
 MEMB(metadata_memb, struct qbuf_metadata, MAX_QUEUED_PACKETS);
-LIST(neighbor_list);
+LIST(neighbour_list);
 
 /*---------------------------------------------------------------------------*/
 
@@ -116,7 +116,7 @@ static void transmit_from_queue (void *ptr);
 
 static struct neighbor_queue* neighbor_queue_from_addr (const linkaddr_t *addr) //DEVUELVE LA COLA DE UN VECINO SEGÚN LA DIRECCIÓN DADA
 {
-	struct neighbor_queue *n = list_head(neighbor_list);
+	struct neighbor_queue *n = list_head(neighbour_list);
 	
 	while (n != NULL) 
 	{
@@ -298,7 +298,7 @@ static void free_packet (struct neighbor_queue *n, struct packet_queue *p, int s
 		{
 		    ctimer_stop(&n->transmit_timer);
 			
-		    list_remove(neighbor_list, n); //SE BORRA EL VECINO DE LA LISTA Y COMO MIEMBRO
+		    list_remove(neighbour_list, n); //SE BORRA EL VECINO DE LA LISTA Y COMO MIEMBRO
 		    memb_free(&neighbor_memb, n); 
 		}
 	}
@@ -449,7 +449,7 @@ void csma_output_packet (mac_callback_t sent, void *ptr)
 			n->collisions = 0;
 		  
 			LIST_STRUCT_INIT(n, packet_queue); //INICIALIZA SU COLA 
-			list_add(neighbor_list, n); //AÑADE AL VECINO A LA LISTA DE VECINOS
+			list_add(neighbour_list, n); //AÑADE AL VECINO A LA LISTA DE VECINOS
 		}
 	}
 	
@@ -501,7 +501,7 @@ void csma_output_packet (mac_callback_t sent, void *ptr)
 
 			if (list_length(n->packet_queue) == 0) //NO SE HA ASIGNADO BIEN EL PAQUETE Y SE BORRA EL VECINO Y SU ENTRADA DE LA LISTA
 			{
-				list_remove(neighbor_list, n);
+				list_remove(neighbour_list, n);
 				memb_free(&neighbor_memb, n);
 			}
 		} 

@@ -12,7 +12,7 @@
 #define LOG_MODULE "IoTorii-HLMAC-Table"
 #define LOG_LEVEL LOG_LEVEL_MAC
 
-LIST(hlmac_table_entery_list);
+LIST(hlmac_table_entry_list);
 
 /*---------------------------------------------------------------------------*/
 
@@ -37,7 +37,7 @@ uint8_t hlmactable_add (const hlmacaddr_t addr)
 		hlmac_table_entery_t* entry = (hlmac_table_entery_t*) malloc (sizeof(hlmac_table_entery_t)); //SE RESERVA ESPACIO
 		entry->address = addr; //SE ASIGNA LA DIRECCIÓN DADA
 		
-		list_add (hlmac_table_entery_list, entry);
+		list_add (hlmac_table_entry_list, entry);
 
 		number_of_hlmac_addresses++; //SE AUMENTA LA VARIABLE
 
@@ -48,9 +48,7 @@ uint8_t hlmactable_add (const hlmacaddr_t addr)
 		
 		free(addr_str); //SE LIMPIA LA VARIABLE
 		addr_str = NULL;
-		#endif
 
-		#if LOG_DBG_DEVELOPER == 1
 		LOG_DBG("Number of HLMAC address: %d saved to HLMAC table.\n", number_of_hlmac_addresses);
 		#endif
 
@@ -64,9 +62,7 @@ uint8_t hlmactable_add (const hlmacaddr_t addr)
 		LOG_DBG("HLMAC address %s is not saved to HLMAC table, MAX_HLMAC: %d, number of entries: %d, \n", addr_str, HLMAC_MAX_HLMAC, number_of_hlmac_addresses);
 		free(addr_str);
 		addr_str = NULL;
-		#endif
 
-		#if LOG_DBG_DEVELOPER == 1
 		LOG_DBG("Number of HLMAC address: %d saved to HLMAC table.\n", number_of_hlmac_addresses);
 		#endif
 
@@ -120,7 +116,7 @@ uint8_t hlmactable_has_loop (const hlmacaddr_t addr)
 
 hlmacaddr_t* hlmactable_get_longest_matchhed_prefix (const hlmacaddr_t address)
 {
-	//if (list_length(hlmac_table_entery_list) == 0) //return UNSPECIFIED_HLMAC_ADDRESS;
+	//if (list_length(hlmac_table_entry_list) == 0) //return UNSPECIFIED_HLMAC_ADDRESS;
 
 	hlmacaddr_t* addr = (hlmacaddr_t*) malloc (sizeof(hlmacaddr_t));
 	addr->address = (uint8_t*) malloc (sizeof(uint8_t)* address.len);
@@ -141,7 +137,7 @@ hlmacaddr_t* hlmactable_get_longest_matchhed_prefix (const hlmacaddr_t address)
 
 	while (hlmac_get_len(*addr) > 0) //SE BUSCA LA DIRECCIÓN EN LA TABLA MIENTRAS LA LONGITUD NO SEA NULA
 	{
-		for (table_entry = list_head(hlmac_table_entery_list); table_entry != NULL; table_entry = table_entry->next)
+		for (table_entry = list_head(hlmac_table_entry_list); table_entry != NULL; table_entry = table_entry->next)
 		{
 			if (hlmac_cmp(table_entry->address, *addr) == 0) //SI SON IGUALES
 				return addr;
@@ -160,7 +156,7 @@ int hlmactable_calculate_sum_hop (void)
 	int sum = 0;
 	hlmac_table_entery_t *table_entry;
 	
-	for (table_entry = list_head(hlmac_table_entery_list); table_entry != NULL; table_entry = table_entry->next)
+	for (table_entry = list_head(hlmac_table_entry_list); table_entry != NULL; table_entry = table_entry->next)
 	{
 		sum += table_entry->address.len; //SE AÑADE AL NÚMERO DE SALTOS LA LONGITUD
 	}
