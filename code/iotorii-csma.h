@@ -55,7 +55,8 @@ struct neighbour_table_entry //ESTRUCTURA DE ENTRADA DE TABLA
 	struct neighbour_table_entry *next;
 	linkaddr_t addr;
 	uint8_t number_id;
-	uint8_t flag;
+	uint8_t flag; //FLAG PADRE/HIJO OUTPUT/INPUT
+	uint8_t load; //CARGA DE CADA NODO
 };
 
 typedef struct neighbour_table_entry neighbour_table_entry_t;
@@ -122,10 +123,11 @@ input_packet (void)	...SE RECIBE PAQUETE Y SE REALIZAN COMPROBACIONES
 ///////////
 	--> iotorii_operation()
 		--> //msg HELLO// iotorii_handle_incoming_hello() ...PROCESA HELLO Y AÑADE AL VECINO A SU TABLA DE VECINOS
-		--> //msg setHLMAC// iotorii_handle_incoming_sethlamc()	...PROCESA setHLMAC
+		--> //msg setHLMAC// iotorii_handle_incoming_sethlmac_load()	...PROCESA setHLMAC
 			--> iotorii_extract_address() ...SE COGE LA DIRECCIÓN DEL EMISOR
 			--> hlmactable_has_loop(*received_hlmac_addr) ...COMPRUEBA QUE NO HAY BUCLE
 			--> hlmactable_add(*received_hlmac_addr) ...AÑADE LA DIRECCIÓN HLMAC ASIGNADA A LA TABLA DEL NODO SIEMPRE QUE NO SUPERE EL MAX
+		--> //msg LOAD// iotorii_handle_incoming_hello() ...PROCESA LOAD MESSAGE
 ///////////
 
 
@@ -134,4 +136,21 @@ on
 off
 
 max_payload
+*/
+
+
+
+
+
+/*
+1) ROOT: iotorii_handle_sethlmac_timer()
+   -> iotorii_send_sethlmac()
+   
+   COMÚN: iotorii_handle_sethlmac_timer()
+   -> ctimer
+
+
+
+
+
 */
