@@ -7,6 +7,7 @@
 #define IOTORII_CSMA_H_
 
 #include "hlmacaddr.h"
+#include "hlmac-table.h"
 #include "net/linkaddr.h"
 
 #include "contiki.h"

@@ -5,6 +5,8 @@
 
 #include "contiki.h"
 #include "hlmacaddr.h"
+//#include "lib/list.h"
+//#include <stdio.h>
 
 /*---------------------------------------------------------------------------*/
 
@@ -17,7 +19,17 @@ struct hlmac_table_entry
 typedef struct hlmac_table_entry hlmac_table_entry_t;
 uint8_t number_of_hlmac_addresses;
 
+
 /*---------------------------------------------------------------------------*/
+
+/*void f_aux (void);
+
+void f_aux ()
+{
+	uint8_t a;
+	a = list_length(hlmac_table_entry_list); 
+	printf("msg info %d", a);
+}*/
 
 //INICIALIZA LA TABLA DE DIRECCIONES HLMAC
 void hlmac_table_init (void);

@@ -121,6 +121,7 @@ LIST(node_list); //aux
 void list_node_priority_entry (payload_entry_t *a, hlmacaddr_t *addr); //GUARDA INFO EN node_priority
 uint8_t edge = 0; //INDICA QUE EL NODO ES EDGE SI ES 1
 uint8_t first_edge_sent = 0; //INDICA QUE SE HA ENVIADO EL PRIMER MENSAJE EDGE SI ES 1
+uint8_t start_msg_load = 0;
 
 #endif
 
@@ -171,43 +172,6 @@ static int max_payload (void)
 /*---------------------------------------------------------------------------*/
 
 #if IOTORII_NODE_TYPE > 0 //ROOT O NODO COMÚN
-
-#if LOG_DBG_STATISTIC == 1
-
-static void iotorii_handle_statistic_timer ()
-{
-	printf("Periodic Statistics: node_id: %u, nº hello: %d, nº sethlmac: %d, nº neighbours: %d, sum_hop: %d\n", node_id, number_of_hello_messages, number_of_sethlmac_messages, number_of_neighbours, hlmactable_calculate_sum_hop());
-
-	//printf("%d %d VECINOS!!!!!\n", list_length(neighbour_table_entry_list), number_of_neighbours);
-	printf("El nodo tiene %d vecinos y no ha recibido HLMAC de %d vecinos: ", number_of_neighbours, number_of_neighbours_flag);
-	
-	if (!number_of_neighbours_flag)
-	{
-		printf("ES NODO EDGE\n");
-		edge = 1; ///////
-	}
-	else
-		printf("NO ES NODO EDGE\n");
-	
-	
-	neighbour_table_entry_t *nb;
-	
-	for (nb = list_head(neighbour_table_entry_list); nb != NULL; nb = list_item_next(nb))
-	{
-		if (nb->flag == 1)
-			printf("Vecino padre (flag, carga) --> ");
-		else
-			printf("Vecino hijo  (flag, carga) --> ");
-		printf("%d, %d\n", nb->flag, nb->load);		
-	}
-	
-	//ctimer_reset(&sethlmac_timer); //Restart the timer from the previous expire time.
-	//ctimer_restart(&sethlmac_timer); //Restart the timer from current time.
-	//ctimer_stop(&sethlmac_timer); //Stop the timer.
-}
-
-#endif
-
 
 hlmacaddr_t *iotorii_extract_address (void) //SE EXTRAE LA DIRECCIÓN DEL NODO EMISOR A PARTIR DEL PAQUETE RECIBIDO
 {
@@ -304,13 +268,11 @@ hlmacaddr_t *iotorii_extract_address (void) //SE EXTRAE LA DIRECCIÓN DEL NODO E
 			
 			memcpy(packetbuf_dataptr(), payload_entry->payload, payload_entry->data_len); //SE COPIA PAYLOAD
 			packetbuf_set_datalen(payload_entry->data_len);
-
 			//SE LIBERA MEMORIA
 			free(payload_entry->payload);
 			payload_entry->payload = NULL;
 			free(payload_entry);
 			payload_entry = NULL;
-
 			//Control info: the destination address, the broadcast address, is tagged to the outbound packet
 			packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &linkaddr_null);
 			LOG_DBG("Queue: Load message prepared to send\n");
@@ -328,7 +290,6 @@ hlmacaddr_t *iotorii_extract_address (void) //SE EXTRAE LA DIRECCIÓN DEL NODO E
 				printf("paquete NO EDGE enviado\n");
 				number_of_load_no_edge_messages++;
 			}
-
 			#if LOG_DBG_STATISTIC == 1
 			printf("Number of Edge messages: %d\n", number_of_load_edge_messages);
 			printf("Number of No Edge messages: %d\n", number_of_load_no_edge_messages);
@@ -360,18 +321,19 @@ hlmacaddr_t *iotorii_extract_address (void) //SE EXTRAE LA DIRECCIÓN DEL NODO E
 void iotorii_handle_load_timer ()
 {
 	//neighbour_table_entry_t *nb;													////
-	//nb = list_pop(neighbour_table_entry_list); 							 		////
-	node_priority_t *nb;
-	nb = list_pop(node_list); 
+	//nb = list_head(neighbour_table_entry_list); 							 		////
 	
-	if (nb) //EXISTE 
+	node_priority_t *nodo;
+	nodo = list_head(node_list); 
+	
+	if (list_head(node_list)) //EXISTE 
 	{
 		//SE PREPARA EL BUFFER DE PAQUETES
 		
 		packetbuf_clear(); //SE RESETEA EL BUFFER 
 		
-		memcpy(packetbuf_dataptr(), &(nb->load), sizeof(&nb->load)); //SE COPIA LOAD  ////
-		packetbuf_set_datalen(sizeof(&nb->load));										////
+		memcpy(packetbuf_dataptr(), &(nodo->load), sizeof(&nodo->load)); //SE COPIA LOAD  ////
+		packetbuf_set_datalen(sizeof(&nodo->load));										////
 
 		//Control info: the destination address, the broadcast address, is tagged to the outbound packet
 		packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &linkaddr_null);
@@ -396,22 +358,68 @@ void iotorii_handle_load_timer ()
 		printf("Number of Edge messages: %d\n", number_of_load_edge_messages);
 		printf("Number of No Edge messages: %d\n", number_of_load_no_edge_messages);
 		
-		printf("carga enviada: %d\n", nb->load); 
+		printf("carga enviada: %d de direccion %s\n", nodo->load, nodo->str_addr); 
 		#endif
+	
+		//SE PLANIFICA EL SIGUIENTE MENSAJE
+		//clock_time_t edge_delay_time = IOTORII_LOAD_START_TIME;
+		//ctimer_set(&load_timer, edge_delay_time, iotorii_handle_load_timer, NULL);
 		
-		if (list_head(neighbour_table_entry_list)) 
-		{
-			//SE PLANIFICA EL SIGUIENTE MENSAJE
-			clock_time_t edge_delay_time = IOTORII_LOAD_START_TIME + 50;
-			ctimer_set(&load_timer, edge_delay_time, iotorii_handle_load_timer, NULL);
-			
-			#if LOG_DBG_DEVELOPER == 1
-			LOG_DBG("Scheduling a LOAD message after %u ticks in the future\n", (unsigned)edge_delay_time);
-			#endif
-		}
+		#if LOG_DBG_DEVELOPER == 1
+		LOG_DBG("Scheduling a LOAD message after %u ticks in the future\n", (unsigned)edge_delay_time);
+		#endif
+
 		send_packet(NULL, NULL);
 	}
 }
+
+
+#if LOG_DBG_STATISTIC == 1
+
+static void iotorii_handle_statistic_timer ()
+{
+	printf("Periodic Statistics: node_id: %u, nº hello: %d, nº sethlmac: %d, nº neighbours: %d, sum_hop: %d\n", node_id, number_of_hello_messages, number_of_sethlmac_messages, number_of_neighbours, hlmactable_calculate_sum_hop());
+
+	//printf("%d %d VECINOS!!!!!\n", list_length(neighbour_table_entry_list), number_of_neighbours);
+	printf("El nodo tiene %d vecinos y no ha recibido HLMAC de %d vecinos: ", number_of_neighbours, number_of_neighbours_flag);
+	
+	if (!number_of_neighbours_flag)
+	{
+		printf("ES NODO EDGE\n");
+		edge = 1; ///////
+		
+		if (first_edge_sent == 0)
+		{
+			//SE PLANIFICA MENSAJE EDGE
+			clock_time_t load_start_time;
+			load_start_time = IOTORII_LOAD_START_TIME * CLOCK_SECOND;
+			LOG_DBG("Scheduling a Edge message after %u ticks in the future\n", (unsigned)load_start_time);
+			ctimer_set(&load_timer, load_start_time, iotorii_handle_load_timer, NULL);	
+		}
+	}
+	else
+		printf("NO ES NODO EDGE\n");
+	
+	
+	neighbour_table_entry_t *nb;
+	
+	for (nb = list_head(neighbour_table_entry_list); nb != NULL; nb = list_item_next(nb))
+	{
+		if (nb->flag == 1)
+			printf("Vecino padre (flag, carga) --> ");
+		else
+			printf("Vecino hijo  (flag, carga) --> ");
+		printf("%d, %d\n", nb->flag, nb->load);		
+	}
+	
+	start_msg_load = 1; //FLAG DE COMIENZO DE MENSAJES LOAD
+	
+	//ctimer_reset(&sethlmac_timer); //Restart the timer from the previous expire time.
+	//ctimer_restart(&sethlmac_timer); //Restart the timer from current time.
+	//ctimer_stop(&sethlmac_timer); //Stop the timer.
+}
+
+#endif
 
 
 static void iotorii_handle_hello_timer ()
@@ -710,24 +718,20 @@ void iotorii_handle_incoming_sethlmac_load () //PROCESA UN MENSAJE DE DIFUSIÓN 
 	neighbour_table_entry_t *neighbour_entry;
 
 	if (hlmac_is_unspecified_addr(*received_hlmac_addr)) //SI NO SE ESPECIFICA DIRECCIÓN, NO HAY PARA EL NODO
-	{
-		printf("sin dir\n");
-		
-		if (first_edge_sent == 1)
+	{		
+		if (start_msg_load == 1)
 		{
 			int packetbuf_data_len = packetbuf_datalen();
 			
 			uint8_t *p_load = (uint8_t *) malloc (sizeof(uint8_t));
 			memcpy(p_load, packetbuf_dataptr(), packetbuf_data_len); //COPIA DEL BUFFER por que da igual?
 			
-			printf("carga recibida: %d de direccion %s\n", *p_load, link_addr_to_str(sender_link_address));
-			
 			for (neighbour_entry = list_head(neighbour_table_entry_list); neighbour_entry != NULL; neighbour_entry = list_item_next(neighbour_entry))
 			{
 				if (linkaddr_cmp(&neighbour_entry->addr, sender))
 				{
 					memcpy(&neighbour_entry->load, packetbuf_dataptr(), packetbuf_data_len); //SE ACTUALIZA LA CARGA EN LA LISTA DE VECINOS
-					
+					printf("carga recibida: %d de direccion %s\n", *p_load, link_addr_to_str(sender_link_address));
 					//SE MOSTRARÁN LAS ESTADÍSTICAS ACTUALIZADAS					
 					//clock_time_t statistic_start_time = 5 * CLOCK_SECOND;
 					//ctimer_set(&statistic_timer, statistic_start_time, iotorii_handle_statistic_timer, NULL);
@@ -914,10 +918,10 @@ static void init (void)
 	#endif
 	
 	//SE PLANIFICA MENSAJE EDGE
-	clock_time_t load_start_time;
+	/*clock_time_t load_start_time;
 	load_start_time = IOTORII_LOAD_START_TIME * CLOCK_SECOND;
 	LOG_DBG("Scheduling a Edge message after %u ticks in the future\n", (unsigned)load_start_time);
-	ctimer_set(&load_timer, load_start_time, iotorii_handle_load_timer, NULL);	
+	ctimer_set(&load_timer, load_start_time, iotorii_handle_load_timer, NULL);	*/
 }
 
 
@@ -1047,4 +1051,3 @@ void list_node_priority_entry (payload_entry_t *a, hlmacaddr_t *addr)
 		aux = aux->next;
 	}
 }
-
