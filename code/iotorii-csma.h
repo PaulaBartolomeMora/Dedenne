@@ -124,7 +124,7 @@ input_packet (void)	...SE RECIBE PAQUETE Y SE REALIZAN COMPROBACIONES
 ///////////
 	--> iotorii_operation()
 		--> //msg HELLO// iotorii_handle_incoming_hello() ...PROCESA HELLO Y AÑADE AL VECINO A SU TABLA DE VECINOS
-		--> //msg setHLMAC// iotorii_handle_incoming_sethlmac_load()	...PROCESA setHLMAC
+		--> //msg setHLMAC// iotorii_handle_incoming_sethlmac_or_load()	...PROCESA setHLMAC
 			--> iotorii_extract_address() ...SE COGE LA DIRECCIÓN DEL EMISOR
 			--> hlmactable_has_loop(*received_hlmac_addr) ...COMPRUEBA QUE NO HAY BUCLE
 			--> hlmactable_add(*received_hlmac_addr) ...AÑADE LA DIRECCIÓN HLMAC ASIGNADA A LA TABLA DEL NODO SIEMPRE QUE NO SUPERE EL MAX
