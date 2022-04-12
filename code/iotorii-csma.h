@@ -56,8 +56,9 @@ struct neighbour_table_entry //ESTRUCTURA DE ENTRADA DE TABLA
 	struct neighbour_table_entry *next;
 	linkaddr_t addr;
 	uint8_t number_id;
-	uint8_t flag; //FLAG PADRE/HIJO OUTPUT/INPUT
+	int flag; //FLAG PADRE/HIJO OUTPUT/INPUT
 	uint8_t load; //CARGA DE CADA NODO
+	int in_out; //0 SIN VALOR, 1 LOAD IN, 2 LOAD OUT
 };
 
 typedef struct neighbour_table_entry neighbour_table_entry_t;

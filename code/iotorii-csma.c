@@ -123,12 +123,14 @@ struct node_priority //ESTRUCTURA DE ENTRADA DE TABLA DE PRIORIDADES Y DE RELACI
 	uint8_t priority;
 	uint8_t nhops;
 	uint8_t load; //CARGA DE CADA NODO
+	int load_to_next; //CARGA QUE SE QUEDA ALMACENADA PARA ENVIAR AL HIJO EN LA SEGUNDA VUELTA
 };
 
 typedef struct node_priority node_priority_t;
 LIST(node_list); //aux
 
 void list_node_priority_entry (payload_entry_t *a, hlmacaddr_t *addr); //GUARDA INFO EN node_priority
+
 uint8_t edge = 0; //INDICA QUE EL NODO ES EDGE SI ES 1
 uint8_t first_edge_sent = 0; //INDICA QUE SE HA ENVIADO EL PRIMER MENSAJE EDGE SI ES 1
 
@@ -137,16 +139,16 @@ uint8_t sent_no_edge = 0; //INDICA A 1 LA ACTUALIZACIÓN COMPLETA DE LA LISTA DE
 
 uint8_t start_share = 0;
 uint8_t msg_share_on = 0;
+uint8_t new_edge = 0; //MARCA COMO EDGE UN NODO NO EDGE QUE YA HA REPARTIDO SU CARGA
 
 int extra_load = 0; //INDICA CUANTA CARGA SOBRA SI UN NODO TIENE UNA CANTIDAD MAYOR A 100 
-int new_extra_load = 0; //INDICA CUANTA CARGA DE LA QUE SOBRA SE ENVÍA A OTRO NODO
+int new_extra_load = 0; //INDICA CUANTA CARGA DEL TOTAL SOBRANTE SE ENVÍA AL PADRE
+
+uint8_t n_nodes = 0; //PARA COMPARAR CON n_nodes_complete Y VER SI UN NODO HIJO TIENE QUE PONER SU CARGA A 100
+uint8_t n_nodes_complete = 0; //INDICA EN LA SEGUNDA VUELTA DEL REPARTO DE CARGAS EL NÚMERO DE NODOS PADRES CON CARGA = 100
 
 uint8_t load_added = 0; //EVITA SUMAR VARIAS VECES UNA CARGA A UN NODO
 
-uint8_t refresh = 0;
-uint8_t done_refresh = 0; //EVITA QUE SE IMPRIMAN MÁS DE UNA VEZ LAS ESTADÍSTICAS
-uint8_t end_first_refresh = 0;
-uint8_t num_refresh = 0;
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -297,21 +299,42 @@ void iotorii_handle_share_timer ()
 	
 	neighbour_table_entry_t *nb;
 	nb = list_head(neighbour_table_entry_list);
-	//printf("//share\n");
+	printf("///////share\n");
 	
 	msg_share_on = 1;
 	
-	if (edge == 1 && start_share == 0)
+	//PRIMERA VUELTA: DESDE LOS EDGE HACIA ARRIBA SE VAN QUEDANDO TODOS LOS NODOS CON UNA CARGA DE 100
+	//POR PRIORIDAD LA CARGA RESTANTE VA SIEMPRE HACIA LOS NODOS DE ARRIBA HASTA LLEGAR AL ROOT
+	//EN LA SEGUNDA VUELTA SE ENVIARÁ LA CARGA QUE FALTE HACIA LOS HIJOS
+	if ((edge == 1 || new_edge == 1) && start_share == 0)
 	{
-		//printf("share edge\n");
+		printf("share1\n");
 		
 		if (nodo->load > 100)
 		{
 			extra_load = nodo->load - 100; //SE QUITA LA CARGA SOBRANTE Y SE ALMACENA 
-			nodo->load = 100; //SE ASIGNA COMO MÁXIMO UNA CANTIDAD DE 100
-
+			
+			#if IOTORII_NODE_TYPE == 2
+			nodo->load = 100; //SE ASIGNA COMO MÁXIMO UNA CANTIDAD DE 100 PARA NODOS COMUNES
+			#endif
+			
 			printf("//INFO HANDLE SHARE// En este nodo sobra una carga de %d\n", extra_load);
 			
+			//ANTES DE INFORMAR DE LA CARGA AL PADRE SE REVISA SI HAY HIJOS QUE PUEDAN ABSORBER CARGA
+			for (nb = list_head(neighbour_table_entry_list); nb != NULL; nb = list_item_next(nb))
+			{
+				if (nb->flag == 0 && nb->in_out < 0) 
+				{
+					extra_load = extra_load + nb->in_out; //EXTRA = EXTRA + (-SALIENTE)
+					nodo->load_to_next = -nb->in_out; //SE ALMACENA LA CARGA QUE SE TENDRÍA QUE ENVIAR HACIA LOS HIJOS
+					
+					#if IOTORII_NODE_TYPE == 1
+					nodo->load = nodo->load + nb->in_out; //SE INDICA LA CARGA ACTUAL DE ROOT A PARTIR DE LO QUE PUEDAN ABSORBER SUS HIJOS (NO ES 100 COMO LOS COMUNES)
+					#endif
+				}
+			}
+			
+			//LA CARGA QUE NO SE PUEDE ABSORBER POR LOS HIJOS SE MANDA AL PADRE
 			for (nb = list_head(neighbour_table_entry_list); nb != NULL; nb = list_item_next(nb))
 			{
 				if (nb->flag == 1)
@@ -323,7 +346,7 @@ void iotorii_handle_share_timer ()
 					packetbuf_set_datalen(sizeof(extra_load));									
 					packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &linkaddr_null);
 						
-					printf("//INFO HANDLE SHARE// Carga actual del nodo: %d\n", nodo->load);
+					printf("//INFO HANDLE SHARE// Carga actualizada: %d\n", nodo->load);
 					printf("//INFO HANDLE SHARE// Carga informada: %d\n", extra_load); 
 				}	
 			}		
@@ -344,49 +367,39 @@ void iotorii_handle_share_timer ()
 					packetbuf_set_datalen(sizeof(extra_load));									
 					packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &linkaddr_null);
 						
-					printf("//INFO HANDLE SHARE// Carga actual del nodo: %d\n", nodo->load);
+					printf("//INFO HANDLE SHARE// Carga actualizada: %d\n", nodo->load);
 					printf("//INFO HANDLE SHARE// Carga informada: %d\n", extra_load); 
 				}	
 			}
 		}
 		send_packet(NULL, NULL);
+		ctimer_set(&share_timer, IOTORII_SHARE_START_TIME * 5 * CLOCK_SECOND, iotorii_handle_share_timer, NULL);
 	}
-	else if (edge == 0 && start_share == 1)
-	{
-		printf("share no edge\n");
+	
+	//SEGUNDA VUELTA: SE COMPLETA EL REPARTO EN LOS NODOS QUE NECESITAN ENVIAR PARTE DE SU CARGA A SUS HIJOS
+	//SE COMPRUEBA QUE LA CARGA SIGUE SIENDO SUPERIOR A 100 O QUE SE HA ALMACENADO CARGA PARA ENVIAR ANTERIORMENTE
+	else if ((nodo->load > 100 || nodo->load_to_next > 0) && new_edge == 1 && start_share == 1) 
+	{		
+		printf("share2\n");
 		
-		if (nodo->load > 100) /////
+		//LA CARGA QUE NO SE PUEDE ABSORBER POR LOS HIJOS SE MANDA AL PADRE
+		/*for (nb = list_head(neighbour_table_entry_list); nb != NULL; nb = list_item_next(nb))
 		{
-			/*extra_load = nodo->load - 100; //SE QUITA LA CARGA SOBRANTE Y SE ALMACENA 
-			nodo->load = 100; //SE ASIGNA COMO MÁXIMO UNA CANTIDAD DE 100
-			printf("//MSG HANDLE SHARE// En este nodo sobra una carga de %d ", extra_load);
-			
-			for (nb = list_head(neighbour_table_entry_list); nb != NULL; nb = list_item_next(nb))
+			if (nb->flag == 0 && nb->in_out < 0) 
 			{
-				if (nb->load < 100 && nb->flag == 0) //PRIORIDAD ENVÍO A NODOS EDGE CON CARGA < 100
-				{
-					if (nb->load + extra_load > 100)
-					{
-						new_extra_load = 100 - nb->load;
-						printf("y se envia %d a un vecino edge\n", new_extra_load);
-					}
-					else
-					{
-						new_extra_load = extra_load;
-						printf("y se envia el total de carga a un vecino edge\n");
-					}
+				packetbuf_clear(); //SE PREPARA EL BUFFER DE PAQUETES Y SE RESETEA 
+				
+				memcpy(packetbuf_dataptr(), &(nodo->load_to_next), sizeof(nodo->load_to_next)); //SE COPIA LOAD  
+				packetbuf_set_datalen(sizeof(nodo->load_to_next));									
+				packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &linkaddr_null);
 					
-					packetbuf_clear(); //SE PREPARA EL BUFFER DE PAQUETES Y SE RESETEA 
-					
-					memcpy(packetbuf_dataptr(), &(new_extra_load), sizeof(new_extra_load)); //SE COPIA LOAD  
-					packetbuf_set_datalen(sizeof(new_extra_load));									
-					packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &linkaddr_null);
-					
-					send_packet(NULL, NULL);
-				}	
-			}*/		
-		}
+				printf("//INFO HANDLE SHARE// Carga informada al hijo: %d\n", nodo->load_to_next); 
+				nodo->load_to_next = 0;
+			}
+		}	
+		send_packet(NULL, NULL);*/
 	}	
+	
 	start_share = 1; //CUANDO ENTRA POR LOS EDGE SE ACTIVA (EN LA PRIMERA VUELTA)
 	ctimer_set(&statistic_timer, IOTORII_STATISTICS_TIME * CLOCK_SECOND, iotorii_handle_statistic_timer, NULL); //SE MOSTRARÁN LAS ESTADÍSTICAS ACTUALIZADAS
 }
@@ -401,9 +414,6 @@ static void iotorii_handle_statistic_timer ()
 	node_priority_t *nodo;
 	nodo = list_head(node_list); 
 	neighbour_table_entry_t *nb;
-	
-	//if (start_share == 1)
-	//	refresh = 1; //PARA QUE ENTRE EN EL PROCESAMIENTO DE MENSAJE LOAD
 	
 	if (start_share == 0 && msg_share_on == 0)
 	{
@@ -422,7 +432,7 @@ static void iotorii_handle_statistic_timer ()
 		{
 			printf("no es edge\n");
 			
-			if ((start_load == 1 && sent_no_edge == 0) || refresh == 1) //SEGUNDA VUELTA CUANDO YA SE HA INFORMADO DE LA CARGA DE LOS NODOS EDGE
+			if (start_load == 1 && sent_no_edge == 0) //SEGUNDA VUELTA CUANDO YA SE HA INFORMADO DE LA CARGA DE LOS NODOS EDGE
 			{
 				ctimer_set(&load_timer, IOTORII_LOAD_START_TIME * CLOCK_SECOND, iotorii_handle_load_timer, NULL); 
 				sent_no_edge = 1;
@@ -433,24 +443,19 @@ static void iotorii_handle_statistic_timer ()
 		
 		printf("Carga actual del nodo: %d\n", nodo->load);
 		for (nb = list_head(neighbour_table_entry_list); nb != NULL; nb = list_item_next(nb)) //LISTA DE VECINOS DEL NODO
-		{	
-			//if (nb->in_out == 205 || nb->in_out == 255)
-			//	nb->in_out = 0;
-			
+		{				
 			if (nb->flag == 1 || nb->flag == -1)
 				printf("Vecino padre (flag, carga, in_out) --> ");
 			else
 				printf("Vecino hijo  (flag, carga, in_out) --> ");
 			printf("%d, %d, %d\n", nb->flag, nb->load, nb->in_out);		
 		}
-		
 
 		for (nb = list_head(neighbour_table_entry_list); nb != NULL; nb = list_item_next(nb))
 		{
 			if (nb->load == 0)
 				load_null++;
-		}
-		
+		}		
 	}
 	else if (msg_share_on == 1)
 	{
@@ -465,35 +470,14 @@ static void iotorii_handle_statistic_timer ()
 		}	
 	}	
 	
-	//printf("(sent_no_edge == %d || edge == %d) && start_share == %d) || (done_refresh == %d && refresh == %d)\n",sent_no_edge,edge,start_share,done_refresh,refresh);	
-	
-	if (((/*sent_no_edge == 1 ||*/ edge == 1) && start_share == 0 && load_null == 0) || (done_refresh == 1 && refresh == 1)) //SI SE HAN ENVIADO TODOS LOS MENSAJES DE CARGA (PRIMERA ACTUALIZACIÓN COMPLETA)
-	{
-		//printf("(sent_no_edge == %d || edge == %d) && start_share == %d) || (done_refresh == %d && refresh == %d)\n",sent_no_edge,edge,start_share,done_refresh,refresh);
-		
-		//start_load = 0 
-		//sent_no_edge = 0;
-		
-		/*if (done_refresh == 1)
-		{
-			refresh = 0;
-			num_refresh++;
-		}*/
-		
-		//printf("num_refresh = %d\n", num_refresh);
+	if ((edge == 1 || new_edge == 1) /*&& start_share == 0*/ && load_null == 0) //SI SE HAN ENVIADO TODOS LOS MENSAJES DE CARGA (PRIMERA ACTUALIZACIÓN COMPLETA)
 		ctimer_set(&share_timer, IOTORII_SHARE_START_TIME * CLOCK_SECOND, iotorii_handle_share_timer, NULL);	
-	}
+
+	//if ((edge == 1 || new_edge == 1) && start_share == 1 && load_null == 0) //SI SE HAN ENVIADO TODOS LOS MENSAJES DE CARGA (PRIMERA ACTUALIZACIÓN COMPLETA)
+	//	ctimer_set(&share_timer, IOTORII_SHARE_START_TIME * 5 * CLOCK_SECOND, iotorii_handle_share_timer, NULL);
 	
-	if (load_null == 0)
+	if (load_null == 0) //SI UN NODO SABE YA TODAS LAS CARGAS DE SUS VECINOS
 		msg_share_on = 1;
-
-	//if (/*edge == 0 && sent_no_edge == 1 && start_share == 1 &&*/ done_refresh == 1)
-	/*{
-		printf("entra\n");
-		ctimer_set(&share_timer, IOTORII_SHARE_START_TIME * CLOCK_SECOND, iotorii_handle_share_timer, NULL);
-
-		refresh = 0;
-	}*/
 }
 
 #endif
@@ -800,7 +784,7 @@ void iotorii_handle_incoming_sethlmac_or_load () //PROCESA UN MENSAJE DE DIFUSI�
 
 	if (hlmac_is_unspecified_addr(*received_hlmac_addr)) //SI NO SE ESPECIFICA DIRECCIÓN, NO HAY PARA EL NODO
 	{		
-		if ((start_load == 1 && msg_share_on == 0) /*|| refresh == 1*/)
+		if (start_load == 1 && msg_share_on == 0)
 		{
 			int packetbuf_data_len = packetbuf_datalen();
 			
@@ -811,26 +795,17 @@ void iotorii_handle_incoming_sethlmac_or_load () //PROCESA UN MENSAJE DE DIFUSI�
 			{
 				if (linkaddr_cmp(&nb->addr, sender)) //SE BUSCA EN LA LISTA DE VECINOS LA DIRECCIÓN QUE HA ENVIADO EL MENSAJE 
 				{
-					//nb->in_out = 0; //////////QUITAR LUEGO!!!!!!!!!!!
 					memcpy(&nb->load, packetbuf_dataptr(), packetbuf_data_len); //SE ACTUALIZA LA CARGA EN LA LISTA DE VECINOS
 					printf("//INFO INCOMING LOAD// carga recibida: %d de direccion %s\n", *p_load, link_addr_to_str(sender_link_address));
-					//printf("//start_load:%d, start_share:%d,msg_share_on:%d\n",start_load,start_share,msg_share_on);
 					
-					if (done_refresh == 0 || refresh == 0) //SE MUESTRAN ESTADÍSTICAS EN EL CASO DE RECEPCIÓN DE MENSAJES LOAD Y SOLO UNA VEZ CUANDO HAY REFRESCO DE CARGAS 
-						ctimer_set(&statistic_timer, 5 * CLOCK_SECOND, iotorii_handle_statistic_timer, NULL); //SE MOSTRARÁN LAS ESTADÍSTICAS ACTUALIZADAS
-					
-					/*if (refresh == 1)
-					{
-						done_refresh = 1;
-						start_share = 0;
-					}*/
+					ctimer_set(&statistic_timer, 5 * CLOCK_SECOND, iotorii_handle_statistic_timer, NULL); //SE MOSTRARÁN LAS ESTADÍSTICAS ACTUALIZADAS
 				}
 			}
 			
 			free(p_load);
 			p_load = NULL;
 		}
-		else if (msg_share_on == 1 /*&& refresh == 0*/)
+		else if (msg_share_on == 1)
 		{
 			int packetbuf_data_len = packetbuf_datalen();
 			
@@ -842,38 +817,28 @@ void iotorii_handle_incoming_sethlmac_or_load () //PROCESA UN MENSAJE DE DIFUSI�
 				if (linkaddr_cmp(&nb->addr, sender)) //SE BUSCA EN LA LISTA DE VECINOS LA DIRECCIÓN QUE HA ENVIADO EL MENSAJE 
 				{	
 					if (*p_extra > 0)
-					{	
-						/*if (nb->load > 100 && nb->load != *p_extra) //SE COMPRUEBA SI YA HA SIDO RESTADO POR OTRO VECINO (SI NO SERÍA = 100) Y SI HAY QUE ACTUALIZAR
-							nb->load = nb->load - *p_extra;
-						else if (nb->load == *p_extra) //NO SE ACTUALIZA NADA, PARA QUE NO SE QUEDE A 0
-							*p_extra = 0;*/
-					
+					{						
 						if (edge == 0 && load_added == 0) //SE PASA LA CARGA RESTANTE AL PROPIO NODO SI ESTE NO ES NODO EDGE (SI ESTÁ POR ENCIMA DE AL QUE SE LE HA RESTADO)
 						{
 							nodo->load = nodo->load + *p_extra;					
 							printf("//INFO INCOMING SHARE// carga actual del nodo: %d\n", nodo->load);
 							load_added = 1;
-							edge = 1;			/////
+							new_edge = 1;		
 							ctimer_set(&statistic_timer, IOTORII_STATISTICS_TIME * CLOCK_SECOND, iotorii_handle_statistic_timer, NULL); //SE MOSTRARÁN LAS ESTADÍSTICAS ACTUALIZADAS
 						}
+						/*else if (nb->flag == 1 && edge == 1 && load_added == 0 && nodo->load < 100)
+						{
+							nodo->load = nodo->load + *p_extra;					
+							printf("//INFO INCOMING SHARE// carga actual del nodo: %d\n", nodo->load);
+							load_added = 1;		
+							ctimer_set(&statistic_timer, IOTORII_STATISTICS_TIME * CLOCK_SECOND, iotorii_handle_statistic_timer, NULL); //SE MOSTRARÁN LAS ESTADÍSTICAS ACTUALIZADAS	
+						}*/
 					}
 					
 					if (*p_extra != 0) //SI HA HABIDO ACTUALIZACIÓN DE LA CARGA
-					{
 						nb->in_out = *p_extra;
-						/*printf("//INFO INCOMING SHARE// carga extra: %d, carga actualizada del vecino: %d\n", *p_extra, nb->load);
-					
-						if (edge == 0 && load_added == 0) //SE PASA LA CARGA RESTANTE AL PROPIO NODO SI ESTE NO ES NODO EDGE (SI ESTÁ POR ENCIMA DE AL QUE SE LE HA RESTADO)
-						{
-							nodo->load = nodo->load + *p_extra;					
-							printf("//INFO INCOMING SHARE// carga actual del nodo: %d\n", nodo->load);
-							load_added = 1;
-						}*/
-					}
 				}
 			}
-			
-			//ctimer_set(&statistic_timer, 5 * CLOCK_SECOND, iotorii_handle_statistic_timer, NULL); //SE MOSTRARÁN LAS ESTADÍSTICAS ACTUALIZADAS
 			
 			free(p_extra);
 			p_extra = NULL;	
